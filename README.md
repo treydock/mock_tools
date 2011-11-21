@@ -21,6 +21,8 @@ None planned, but if you have a request please open an issue
 
 This script will create the databases necessary for a local yum repository and optionally run repoview on each repo.
 
+Default variable settings build Fedora 14-16 for i386, x86_64, and src.
+
 ## Usage ##
 ```
 create_all_repos
@@ -29,5 +31,6 @@ create_all_repos
 
 * Configure to be much more flexible and not require editing of variables to change script's behavior
 * Better error handling
+* Expand to create repos for CentOS and RHEL (coding is done just have to merge from another script)
 
 Additional features can be requested via the issue tracker
