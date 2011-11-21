@@ -1,0 +1,43 @@
+#!/bin/bash
+
+REPOVIEW="/usr/bin/repoview"
+
+BASE_PATH="/var/www/repo"
+ARCH="x86_64 i386 src"
+DISTRO="Fedora"
+DISTRO_VERSIONS="14 15 16"
+
+# Determine if repoview is installed
+test -x ${REPOVIEW} &>/dev/null && USE_REPOVIEW=1 || USE_REPOVIEW=0
+
+# For each distro version and each architecture, create the repo and optionally , repoview
+for version in ${DISTRO_VERSIONS}; do
+
+	if [ "${distro}" == "5" ]; then
+		CHECKSUM="sha"	
+	else
+		CHECKSUM="sha256"
+	fi
+
+	for arch in ${ARCH}; do
+
+		REPO_PATH="${BASE_PATH}/${DISTRO}/${version}/local/${arch}"
+
+		if [ ! -d ${REPO_PATH} ]; then
+			echo "The repository path ${REPO_PATH} does not exist!"
+			exit 1
+		fi
+
+		echo "Create repo for ${REPO_PATH}"
+		/usr/bin/createrepo --database --checksum ${CHECKSUM} ${REPO_PATH} &>/dev/null
+		[ ${?} -eq 0 ] || { echo "Error creating repository for repo ${REPO_PATH}"; exit 1; }
+
+		if [ ${USE_REPOVIEW} -eq 1 ]; then
+			echo "Create repoview for ${REPO_PATH}"
+			${REPOVIEW} ${REPO_PATH} &>/dev/null 
+			[ ${?} -eq 0 ] || { echo "Error creating repoview for repo ${REPO_PATH}"; exit 1; }
+		fi
+	done
+done
+
+exit 0

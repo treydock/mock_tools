@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if [ ${#} -lt 1 ] || [ ${#} -gt 1 ]; then
+	echo "Error: wrong number of arguments"
+	echo "Usage: ${0} <spec file>"
+	exit 1
+fi
+
+SPEC="${1}"
+RESULTS_DIR="${HOME}/rpmbuild/RPMS/%(dist)s/%(target_arch)s"
+ARCH="x86_64 i386"
+DISTRO="fedora"
+DIST_PREFIX="fc"
+DISTRO_VERSIONS="14 15 16"
+
+# Binary paths
+MOCK="/usr/bin/mock"
+RPMBUILD="/usr/bin/rpmbuild"
+
+# Initialize 'global' variables
+SRPM=""
+RPMBUILD_FAIL=""
+
+# Determine if mock is installed
+test -x ${MOCK} &>/dev/null || { echo "ERROR: ${MOCK} not found"; exit 1; }
+
+build_srpm() {
+
+	echo "--------------------------------------"
+	echo "Build SRPM for ${DISTRO}-${version}"
+	rpmbuild_results=$(${RPMBUILD} -bs --define "dist .${DIST_PREFIX}${version}" --define "${DISTRO} ${version}" ${SPEC})
+	if [ ${?} -ne 0 ]; then
+		echo "ERROR: Failed creating SRPM for ${DISTRO}-${version}"
+		echo "${rpmbuild_results}"
+		RPMBUILD_FAIL=true
+	else
+		SRPM=$(echo $rpmbuild_results | awk -F": " '{print $2}')
+		echo "Created: ${SRPM}"
+		RPMBUILD_FAIL=false
+	fi
+}
+
+run_mock() {
+
+	version="$1"
+	arch="$2"
+
+	echo "--------------------------------------"
+	echo "Running mock rebuild for ${DISTRO}-${version}-${arch}"
+
+	${MOCK} -r ${DISTRO}-${version}-${arch} --resultdir ${RESULTS_DIR} --rebuild ${SRPM} 1>/dev/null 2>&1
+	if [ ${?} -ne 0 ]; then
+		echo "ERROR: failed creating RPM for ${DISTRO}-${version}-${arch}"
+		echo "Continueing to next mock build"
+	else
+		echo "Mock complete: ${DISTRO}-${version}-${arch}"
+	fi
+
+}
+
+# For each distro version and each architecture, create the repo and optionally , repoview
+for version in ${DISTRO_VERSIONS}; do
+
+	build_srpm ${version}
+
+	for arch in ${ARCH}; do
+
+		if [ ! ${RPMBUILD_RESULTS} ]; then
+			run_mock ${version} ${arch}
+		else
+			echo "Skipping mock run for ${DISTRO}-${version}-${arch}"
+			break
+		fi
+
+	done
+done
+
+exit 0
