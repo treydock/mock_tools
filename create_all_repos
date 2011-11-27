@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 INIT_REPO=false
 
@@ -13,17 +13,20 @@ and optionally run repoview on each repo.
 OPTIONS:
         -h, --help      Show this message
         --init          Create directory structure to host a local yum repo
-                            Requires argument. Options Fedora, CentOS, All
+        -d, --distro    Specify distro to run operations for.
+                            Accepted arguments, Fedora, CentOS, All
                                 
 EOF
 }
 
-ARGS=`getopt -o h -l help,init: -n "$0" -- "$@"`
+ARGS=`getopt -o hd: -l help,init,distro: -n "$0" -- "$@"`
 
 [ $? -ne 0 ] && { usage; exit 1; }
 
 
 eval set -- "${ARGS}"
+
+[ $# -lt 1 ] && { usage; exit 1; }
 
 while true; do
         case "$1" in
@@ -33,7 +36,9 @@ while true; do
                         ;;
                 --init)
                         INIT_REPO=true
-                        INIT_DISTRO="$2"
+                        shift;;
+                -d|--distro)
+                        USE_DISTRO="$2"
                         shift 2;;
                 --)
                         shift
@@ -44,88 +49,102 @@ while true; do
 done
 
 #[ -z ${RESULTS_DIR} ] && { usage; exit 1; }
-#[ $# -lt 1 ] && { echo "Missing spec file argument"; usage; exit 1; }
+[ "${USE_DISTRO}" == "" ] && { echo "Missing --distro argument"; usage; exit 1; }
 
 
 REPOVIEW="/usr/bin/repoview"
+USE_REPOVIEW=""
 
 BASE_PATH="/var/www/repo"
 ARCH="x86_64 i386 src"
-DISTRO="Fedora"
-DISTRO_VERSIONS="14 15 16"
+FEDORA_VERSIONS="14 15 16"
 CENTOS_VERSIONS="4 5 6"
 
 init_repo() {
+    DISTRO="$1"
 
-    if [ "${INIT_DISTRO}" == "All" ]; then
-        DISTROS="Fedora CentOS"
-    else
-        DISTROS="${INIT_DISTRO}"
+    if [ "${DISTRO}" == "CentOS" ]; then
+        DISTRO_VERSIONS="${CENTOS_VERSIONS}"
+    elif [ "${DISTRO}" == "Fedora" ]; then
+        DISTRO_VERSIONS="${FEDORA_VERSIONS}"
     fi
 
-    for distro in ${DISTROS}; do
-        if [ "${distro}" == "CentOS" ]; then
-            versions="${CENTOS_VERSIONS}"
-        elif [ "${distro}" == "Fedora" ]; then
-            versions="{14,15,16}"
-        fi
+    for version in ${DISTRO_VERSIONS}; do
+        for arch in ${ARCH}; do
+            if [ "${arch}" == "src" ]; then
+                RPM_DIR="SRPMS"
+            else
+                RPM_DIR="RPMS"
+            fi
 
-        for version in ${versions}; do
-            for arch in ${ARCH}; do
-                if [ "${arch}" == "src" ]; then
-                    RPM_DIR="SRPMS"
-                else
-                    RPM_DIR="RPMS"
-                fi
+            FULL_PATH="${BASE_PATH}/${distro}/${version}/local/${arch}/${RPM_DIR}"
 
-                FULL_PATH="${BASE_PATH}/${distro}/local/${version}/${arch}/${RPM_DIR}"
-
-                if [ ! -d "${FULL_PATH}" ]; then
-                    echo "Creating directory: ${FULL_PATH}"
+            if [ ! -d "${FULL_PATH}" ]; then
+                echo "Creating directory: ${FULL_PATH}"
                     mkdir -p ${FULL_PATH}
                 else
                     echo "Directory ${FULL_PATH} already exists"
                 fi
-            done
         done
     done
 
 }
 
-# Initialize the yum repo directories
-[ $INIT_REPO ] && { init_repo; exit 0; }
+# For each distro version and each architecture, create the repo and optionally , repoview
+create_repo() {
+    DISTRO="$1"
+
+    if [ "${DISTRO}" == "CentOS" ]; then
+        DISTRO_VERSIONS="${CENTOS_VERSIONS}"
+    elif [ "${DISTRO}" == "Fedora" ]; then
+        DISTRO_VERSIONS="${FEDORA_VERSIONS}"
+    fi
+
+    for version in ${DISTRO_VERSIONS}; do
+
+        if [ ${version} -lt 6 ]; then
+            CHECKSUM="sha"	
+        else
+            CHECKSUM="sha256"
+        fi
+
+        for arch in ${ARCH}; do
+
+            REPO_PATH="${BASE_PATH}/${DISTRO}/${version}/local/${arch}"
+
+            if [ ! -d ${REPO_PATH} ]; then
+                echo "The repository path ${REPO_PATH} does not exist!"
+                exit 1
+            fi
+
+            echo "Create repo for ${REPO_PATH}"
+            /usr/bin/createrepo --database --checksum ${CHECKSUM} ${REPO_PATH} &>/dev/null
+            [ ${?} -eq 0 ] || { echo "Error creating repository for repo ${REPO_PATH}"; exit 1; }
+
+            if [ ${USE_REPOVIEW} -eq 1 ]; then
+                echo "Create repoview for ${REPO_PATH}"
+                ${REPOVIEW} ${REPO_PATH} &>/dev/null 
+                [ ${?} -eq 0 ] || { echo "Error creating repoview for repo ${REPO_PATH}"; exit 1; }
+            fi
+        done
+    done
+}
 
 # Determine if repoview is installed
 test -x ${REPOVIEW} &>/dev/null && USE_REPOVIEW=1 || USE_REPOVIEW=0
 
-# For each distro version and each architecture, create the repo and optionally , repoview
-for version in ${DISTRO_VERSIONS}; do
+if [ "${USE_DISTRO}" == "All" ]; then
+    DISTROS="Fedora CentOS"
+else
+    DISTROS="${USE_DISTRO}"
+fi
 
-	if [ "${distro}" == "5" ]; then
-		CHECKSUM="sha"	
-	else
-		CHECKSUM="sha256"
-	fi
+for distro in ${DISTROS}; do
 
-	for arch in ${ARCH}; do
+    # Initialize the yum repo directories
+    [ $INIT_REPO ] && init_repo ${distro}
 
-		REPO_PATH="${BASE_PATH}/${DISTRO}/${version}/local/${arch}"
-
-		if [ ! -d ${REPO_PATH} ]; then
-			echo "The repository path ${REPO_PATH} does not exist!"
-			exit 1
-		fi
-
-		echo "Create repo for ${REPO_PATH}"
-		/usr/bin/createrepo --database --checksum ${CHECKSUM} ${REPO_PATH} &>/dev/null
-		[ ${?} -eq 0 ] || { echo "Error creating repository for repo ${REPO_PATH}"; exit 1; }
-
-		if [ ${USE_REPOVIEW} -eq 1 ]; then
-			echo "Create repoview for ${REPO_PATH}"
-			${REPOVIEW} ${REPO_PATH} &>/dev/null 
-			[ ${?} -eq 0 ] || { echo "Error creating repoview for repo ${REPO_PATH}"; exit 1; }
-		fi
-	done
+    create_repo ${distro}
 done
 
 exit 0
