@@ -6,8 +6,6 @@ This script does two things.  First it uses rpmbuild to create a SRPM, and then 
 
 Run the following from your rpmbuild SPEC directory
 
-### Mock for Fedora ###
-
 ```
 # Specifying the directory to output mock logs and final RPMs
 mock_all_fedora --resultdir ${HOME}/rpmbuild/RPMS/"%(dist)s"/"%(target_arch)s" package.spec
@@ -15,8 +13,13 @@ mock_all_fedora --resultdir ${HOME}/rpmbuild/RPMS/"%(dist)s"/"%(target_arch)s" p
 # Using default mock results dir
 mock_all_fedora package.spec
 ```
+# mock_all_centos #
 
-### Mock for CentOS ###
+Same functionality as **mock_all_fedora** but builds for CentOS 4-6 both i386 and x86_64
+
+## Usage ##
+
+Run the following from your rpmbuild SPEC directory
 
 ```
 # Specifying the directory to output mock logs and final RPMs
@@ -26,7 +29,7 @@ mock_all_centos --resultdir ${HOME}/rpmbuild/RPMS/"%(dist)s"/"%(target_arch)s" p
 mock_all_centos package.spec
 ```
 
-## To-Do ##
+# mock_all_* To-Do #
 
 * Run mock processes in parallel
 * Allow for more verbose output from mock processes
