@@ -1,0 +1,126 @@
+#!/bin/bash
+###########################################################
+# This script is used to build RPMs for multiple versions of CentOS
+#
+# Example usage
+#
+# mock_all_fedora --resultdir ${HOME}/rpmbuild/RPMS/"%(dist)s"/"%(target_arch)s" package.spec
+#
+###########################################################
+
+ARGS=`getopt -o hr: -l help,resultdir: -n "$0" -- "$@"`
+
+usage () {
+
+cat << EOF
+usage: $(basename $0) -r <results directory path> package.spec
+
+This script runs a mock rebuild using the specified spec file (ie package.spec)
+for CentOS 4-6, x86_64 and i386
+
+OPTIONS:
+        -h, --help          Show this message
+        -r, --results-dir   Path to mock results directory
+                                Optional, if unspecified uses mock default
+                                
+EOF
+}
+
+[ $# -lt 1 ] && { usage; exit 1; }
+
+eval set -- "${ARGS}"
+
+while true; do
+        case "$1" in
+                -h|--help)
+                        usage
+                        exit 0
+                        ;;
+                -r|--resultdir)
+                        case "$2" in
+                            "") RESULTS_DIR=""; shift 2;;
+                             *) RESULTS_DIR="--resultdir $2"; shift 2;;
+                        esac ;;
+                --)
+                        shift
+                        break;;
+                *)
+                        break;;
+        esac
+done
+
+#[ -z ${RESULTS_DIR} ] && { usage; exit 1; }
+
+[ $# -lt 1 ] && { echo "Missing spec file argument"; usage; exit 1; }
+
+SPEC="${1}"
+ARCH="x86_64 i386"
+DISTRO="centos"
+DIST_PREFIX="el"
+DISTRO_VERSIONS="4 5 6"
+
+# Binary paths
+MOCK="/usr/bin/mock"
+RPMBUILD="/usr/bin/rpmbuild"
+
+# Initialize 'global' variables
+SRPM=""
+RPMBUILD_FAIL=""
+
+# Determine if mock is installed
+test -x ${MOCK} &>/dev/null || { echo "ERROR: ${MOCK} not found"; exit 1; }
+# Determine if rpmbuild is installed
+test -x ${RPMBUILD} &>/dev/null || { echo "ERROR: ${RPMBUILD} not found"; exit 1; }
+
+build_srpm() {
+
+    echo "--------------------------------------"
+    echo "Build SRPM for ${DISTRO}-${version}"
+    rpmbuild_results=$(${RPMBUILD} -bs --define "dist .${DIST_PREFIX}${version}" --define "${DISTRO} ${version}" ${SPEC})
+    if [ ${?} -ne 0 ]; then
+        echo "ERROR: Failed creating SRPM for ${DISTRO}-${version}"
+        echo "${rpmbuild_results}"
+        RPMBUILD_FAIL=true
+    else
+        SRPM=$(echo $rpmbuild_results | awk -F": " '{print $2}')
+        echo "Created: ${SRPM}"
+        RPMBUILD_FAIL=false
+    fi
+}
+
+run_mock() {
+
+    version="$1"
+    arch="$2"
+
+    echo "--------------------------------------"
+    echo "Running mock rebuild for ${DISTRO}-${version}-${arch}"
+
+    ${MOCK} -r ${DISTRO}-${version}-${arch} ${RESULTS_DIR} --rebuild ${SRPM} 1>/dev/null 2>&1
+    if [ ${?} -ne 0 ]; then
+        echo "ERROR: failed creating RPM for ${DISTRO}-${version}-${arch}"
+        echo "Continueing to next mock build"
+    else
+        echo "Mock complete: ${DISTRO}-${version}-${arch}"
+    fi
+
+}
+
+# For each distro version and each architecture, create the repo and optionally , repoview
+for version in ${DISTRO_VERSIONS}; do
+
+    build_srpm ${version}
+
+    for arch in ${ARCH}; do
+
+        if [ ! ${RPMBUILD_RESULTS} ]; then
+            run_mock ${version} ${arch}
+        else
+            echo "Skipping mock run for ${DISTRO}-${version}-${arch}"
+            break
+        fi
+
+    done
+done
+
+exit 0
