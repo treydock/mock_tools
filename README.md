@@ -41,10 +41,12 @@ This script will create the databases necessary for a local yum repository and o
 With the **--init** option you can also create the necessary directory structure to host a local yum repository.
 
 Depending on the **--distro** argument passed the defaults are to use the following
+
 * Fedora 14-16 for i386, x86_64, and src
 * CentOS 4-6 for i386, x86_64, and src
 
 Valid arguments for **--distro**: **(NOTE: Capalization matters)**
+
 * All - Builds both Fedora and CentOS
 * Fedora
 * CentOS
