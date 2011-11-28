@@ -8,8 +8,6 @@
 #
 ###########################################################
 
-ARGS=`getopt -o hr: -l help,resultdir: -n "$0" -- "$@"`
-
 usage () {
 
 cat << EOF
@@ -20,15 +18,19 @@ for CentOS 4-6, x86_64 and i386
 
 OPTIONS:
         -h, --help          Show this message
-        -r, --results-dir   Path to mock results directory
+        -r, --resultdir   Path to mock results directory
                                 Optional, if unspecified uses mock default
                                 
 EOF
 }
 
-[ $# -lt 1 ] && { usage; exit 1; }
+ARGS=`getopt -o hr: -l help,resultdir: -n "$0" -- "$@"`
+
+[ $? -ne 0 ] && { usage; exit 1; }
 
 eval set -- "${ARGS}"
+
+[ $# -lt 1 ] && { usage; exit 1; }
 
 while true; do
         case "$1" in
@@ -55,7 +57,8 @@ done
 
 SPEC="${1}"
 ARCH="x86_64 i386"
-DISTRO="centos"
+MOCK_DISTRO="epel"
+SRPM_DISTRO="rhel"
 DIST_PREFIX="el"
 DISTRO_VERSIONS="4 5 6"
 
@@ -75,10 +78,10 @@ test -x ${RPMBUILD} &>/dev/null || { echo "ERROR: ${RPMBUILD} not found"; exit 1
 build_srpm() {
 
     echo "--------------------------------------"
-    echo "Build SRPM for ${DISTRO}-${version}"
-    rpmbuild_results=$(${RPMBUILD} -bs --define "dist .${DIST_PREFIX}${version}" --define "${DISTRO} ${version}" ${SPEC})
+    echo "Build SRPM for ${SRPM_DISTRO}-${version}"
+    rpmbuild_results=$(${RPMBUILD} -bs --define "dist .${DIST_PREFIX}${version}" --define "${SRPM_DISTRO} ${version}" ${SPEC})
     if [ ${?} -ne 0 ]; then
-        echo "ERROR: Failed creating SRPM for ${DISTRO}-${version}"
+        echo "ERROR: Failed creating SRPM for ${SRPM_DISTRO}-${version}"
         echo "${rpmbuild_results}"
         RPMBUILD_FAIL=true
     else
@@ -94,14 +97,14 @@ run_mock() {
     arch="$2"
 
     echo "--------------------------------------"
-    echo "Running mock rebuild for ${DISTRO}-${version}-${arch}"
+    echo "Running mock rebuild for ${MOCK_DISTRO}-${version}-${arch}"
 
-    ${MOCK} -r ${DISTRO}-${version}-${arch} ${RESULTS_DIR} --rebuild ${SRPM} 1>/dev/null 2>&1
+    ${MOCK} -r ${MOCK_DISTRO}-${version}-${arch} ${RESULTS_DIR} --rebuild ${SRPM} 1>/dev/null 2>&1
     if [ ${?} -ne 0 ]; then
-        echo "ERROR: failed creating RPM for ${DISTRO}-${version}-${arch}"
+        echo "ERROR: failed creating RPM for ${MOCK_DISTRO}-${version}-${arch}"
         echo "Continueing to next mock build"
     else
-        echo "Mock complete: ${DISTRO}-${version}-${arch}"
+        echo "Mock complete: ${MOCK_DISTRO}-${version}-${arch}"
     fi
 
 }

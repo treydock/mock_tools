@@ -8,8 +8,6 @@
 #
 ###########################################################
 
-ARGS=`getopt -o hr: -l help,resultdir: -n "$0" -- "$@"`
-
 usage () {
 
 cat << EOF
@@ -20,15 +18,19 @@ for Fedora 14-16, x86_64 and i386
 
 OPTIONS:
         -h, --help          Show this message
-        -r, --results-dir   Path to mock results directory
+        -r, --resultdir   Path to mock results directory
                                 Optional, if unspecified uses mock default
                                 
 EOF
 }
 
-[ $# -lt 1 ] && { usage; exit 1; }
+ARGS=`getopt -o hr: -l help,resultdir: -n "$0" -- "$@"`
+
+[ $? -ne 0 ] && { usage; exit 1; }
 
 eval set -- "${ARGS}"
+
+[ $# -lt 1 ] && { usage; exit 1; }
 
 while true; do
         case "$1" in
