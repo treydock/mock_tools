@@ -28,7 +28,9 @@ mock_all_centos package.spec
 
 ## To-Do ##
 
-None planned, but if you have a request please open an issue
+* Run mock processes in parallel
+* Allow for more verbose output from mock processes
+Additional features can be requested via the issue tracker
 
 # create_all_repos #
 
