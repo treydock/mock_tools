@@ -29,7 +29,7 @@ mock_all_centos --resultdir ${HOME}/rpmbuild/RPMS/"%(dist)s"/"%(target_arch)s" p
 mock_all_centos package.spec
 ```
 
-# mock_all_* To-Do #
+# mock_all* To-Do #
 
 * Run mock processes in parallel
 * Allow for more verbose output from mock processes
