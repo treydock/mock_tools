@@ -77,7 +77,7 @@ init_repo() {
                 RPM_DIR="RPMS"
             fi
 
-            FULL_PATH="${BASE_PATH}/${distro}/${version}/local/${arch}/${RPM_DIR}"
+            FULL_PATH="${BASE_PATH}/${distro}/${version}/${arch}/${RPM_DIR}"
 
             if [ ! -d "${FULL_PATH}" ]; then
                 echo "Creating directory: ${FULL_PATH}"
@@ -110,7 +110,7 @@ create_repo() {
 
         for arch in ${ARCH}; do
 
-            REPO_PATH="${BASE_PATH}/${DISTRO}/${version}/local/${arch}"
+            REPO_PATH="${BASE_PATH}/${DISTRO}/${version}/${arch}"
 
             if [ ! -d ${REPO_PATH} ]; then
                 echo "The repository path ${REPO_PATH} does not exist!"
@@ -142,7 +142,7 @@ fi
 for distro in ${DISTROS}; do
 
     # Initialize the yum repo directories
-    [ $INIT_REPO ] && init_repo ${distro}
+    [ $INIT_REPO ] || init_repo ${distro}
 
     create_repo ${distro}
 done
