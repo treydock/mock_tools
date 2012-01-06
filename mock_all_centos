@@ -21,6 +21,11 @@ OPTIONS:
         -r, --resultdir   Path to mock results directory
                                 Optional, if unspecified uses mock default
                                 
+EXAMPLE:
+
+# Specifying the directory to output mock logs and final RPMs
+mock_all_centos --resultdir ${HOME}/rpmbuild/RPMS/"%(dist)s"/"%(target_arch)s" package.spec
+
 EOF
 }
 
