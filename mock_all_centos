@@ -82,9 +82,16 @@ test -x ${RPMBUILD} &>/dev/null || { echo "ERROR: ${RPMBUILD} not found"; exit 1
 
 build_srpm() {
 
+	if [ "${version}" == "5" ]; then
+		DIGEST="md5"
+	else
+		DIGEST="sha256"
+	fi
+
     echo "--------------------------------------"
     echo "Build SRPM for ${SRPM_DISTRO}-${version}"
-    rpmbuild_results=$(${RPMBUILD} -bs --define "dist .${DIST_PREFIX}${version}" --define "${SRPM_DISTRO} ${version}" ${SPEC})
+    rpmbuild_results=$(${RPMBUILD} -bs --define "dist .${DIST_PREFIX}${version}" --define "${SRPM_DISTRO} ${version}" \
+						--define "_source_filedigest_algorithm ${DIGEST}" --define "_binary_filedigest_algorithm ${DIGEST}" ${SPEC})
     if [ ${?} -ne 0 ]; then
         echo "ERROR: Failed creating SRPM for ${SRPM_DISTRO}-${version}"
         echo "${rpmbuild_results}"
